@@ -15,7 +15,7 @@ function KOPrinter:onDispatcherRegisterActions()
     Dispatcher:registerAction("toggle_filesync_server", {
         category = "none",
         event = "ToggleFileSyncServer",
-        title = _("Toggle KOPrinter server"),
+        title = _("Toggle KOPrint server"),
         general = true,
     })
 end
