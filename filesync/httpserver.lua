@@ -62,7 +62,7 @@ function HttpServer:start()
         error("Could not bind to port " .. self.port .. ": " .. tostring(err))
     end
 
-    ok, err = server.listen(16)
+    ok, err = server:listen(16)
     if not ok then
         server:close()
         error("Could not listen to port " .. self.port .. ": " .. tostring(err))
@@ -83,7 +83,7 @@ function HttpServer:stop()
     self._running = false
 
     if self._poll_function then
-        UIManager.unschedule(self._poll_function)
+        UIManager:unschedule(self._poll_function)
         self._poll_function = nil
     end
 
@@ -99,6 +99,7 @@ function HttpServer:_schedulePoll()
     if not self._poll_function then
         self._poll_function = function() self:_poll() end
     end
+    UIManager:scheduleIn(0.1, self._poll_function)
 end
 
 function HttpServer:_poll()
@@ -123,7 +124,7 @@ function HttpServer:_poll()
         if not ok then
             logger.warn("Print server: Error handling client:", err)
             pcall(function()
-                self:_sendError(client, 500, tostring(err))
+                self:_sendText(client, 500, tostring(err))
             end)
         end
         pcall(function() client:close() end)
@@ -136,13 +137,13 @@ function HttpServer:_handleClient(client)
     local request_line, recv_err = client:receive("*l")
     if not request_line then
         logger.warn("Print server HTTP: receive failed:", recv_err)
-        self:_sendError(client, 400, "Bad Request")
+        self:_sendText(client, 400, "Bad Request")
         return
     end
 
     local method, path, _ = request_line:match("^(%S+)%s+(%S+)%s+(%S+)")
     if not method or not path then
-        self:_sendError(client, 400, "Bad Request")
+        self:_sendText(client, 400, "Bad Request")
         return
     end
     logger.dbg("Print server HTTP:", method, path)
@@ -155,7 +156,7 @@ function HttpServer:_handleClient(client)
         if not line or line == "" then break end
         header_count = header_count + 1
         if header_count > MAX_HEADER_COUNT then
-            self:_sendError(client, 431, "Request Header Fields Too Large")
+            self:_sendText(client, 431, "Request Header Fields Too Large")
             return
         end
         local key, value = line:match("^([^:]+):%s*(.+)")
@@ -208,7 +209,7 @@ function HttpServer:_handleIpp(client, request)
         self:_sendText(client, 411, 'Length Required')
         return
     end
-    if request.content_length and request.content_length > self.max_body_size then
+    if request.content_length and request.content_length > self.max_size then
         self:_sendText(client, 413, 'Payload Too Large')
         return
     end
@@ -224,7 +225,7 @@ end
 
 function HttpServer:_bodyReader(client, request)
     client:settimeout(BODY_CHUNK_TIMEOUT)
-    local max_size = self.max_body_size
+    local max_size = self.max_size
     local total = 0
     local chunk_count = 0
     local raw_next
@@ -295,7 +296,7 @@ end
  
 
 function HttpServer:_readBody(client, request, max_bytes)
-    local limit = max_bytes or self.max_body_size
+    local limit = max_bytes or self.max_size
     local next_chunk = self:_bodyReader(client, request)
     local parts = {}
     local total = 0
