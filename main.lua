@@ -64,7 +64,7 @@ function KOPrinter:addToMainMenu(menu_items)
                     local T = require("ffi/util").template
                     return T(_("Hostname: %1"), FileSyncManager:getHostname() .. ".local")
                 end,
-                help_text = _("Name under which the server is reachable on the local network (e.g. http://filesync.local). Works out of the box on macOS, iOS and Windows; Linux needs avahi; most Android browsers cannot resolve .local names, so use the IP address or QR code there."),
+                help_text = _("Name under which the server is reachable on the local network (e.g. http://koprinter.local). Works out of the box on macOS, iOS and Windows; Linux needs avahi; most Android browsers cannot resolve .local names, so use the IP address or QR code there."),
                 callback = function()
                     local FileSyncManager = require("filesync/filesyncmanager")
                     FileSyncManager:configureHostname()

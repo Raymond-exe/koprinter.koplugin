@@ -63,8 +63,8 @@ local DEFAULT_PORT = 80
 -- Port used when binding a privileged port (<1024) fails.
 local FALLBACK_PORT = 8080
 -- mDNS hostname label used by a fresh install: the server answers at
--- http://filesync.local. The ".local" suffix is always appended by the plugin.
-local DEFAULT_HOSTNAME = "filesync"
+-- http://koprinter.local. The ".local" suffix is always appended by the plugin.
+local DEFAULT_HOSTNAME = "koprinter"
 
 function FileSyncManager:getPort()
     if self._port then return self._port end
@@ -87,7 +87,7 @@ function FileSyncManager:getServerURL()
     return self:_buildURL(self._ip)
 end
 
---- Build the mDNS URL (e.g. "http://filesync.local"). Only meaningful while
+--- Build the mDNS URL (e.g. "http://koprinter.local"). Only meaningful while
 --- the responder is running; see isMdnsRunning().
 function FileSyncManager:getServerHostnameURL()
     return self:_buildURL(self:getHostname() .. ".local")
@@ -196,7 +196,7 @@ local SETTINGS_KEYS = {
 --- Installs that predate the port-80 default (v1.7.0) kept their saved 8080,
 --- because that release deliberately left existing ports alone. Since v1.9.0
 --- the server also answers to <hostname>.local, and a saved 8080 turns that
---- into "http://filesync.local:8080" -- the port suffix this name exists to
+--- into "http://koprinter.local:8080" -- the port suffix this name exists to
 --- avoid. Move those installs to port 80 once.
 ---
 --- Only the exact value 8080 is touched: any other custom port was chosen

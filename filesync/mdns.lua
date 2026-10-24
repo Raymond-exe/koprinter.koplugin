@@ -96,7 +96,7 @@ end
 --- Encode a dotted DNS name as a sequence of length-prefixed labels
 --- terminated by a zero byte. No output compression is used; that is valid
 --- and keeps the encoder trivial.
---- @param name string: e.g. "filesync.local" (a trailing dot is tolerated)
+--- @param name string: e.g. "koprinter.local" (a trailing dot is tolerated)
 --- @return string: the encoded name
 function Mdns.encodeName(name)
     local parts = {}
