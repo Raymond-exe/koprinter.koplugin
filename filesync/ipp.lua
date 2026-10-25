@@ -431,7 +431,10 @@ end
 local function put_values(parts, name, tags, values, default_tag)
     local n = #values
     if n == 0 then
-        put_record(parts, T.NOVALUE, name, '')
+        -- No values: emit an out-of-band record.
+        local oob = (default_tag == T.UNSUPPORTED or default_tag == T.UNKNOWN) and default_tag
+            or T.NOVALUE
+        put_record(parts, oob, name, '')
         return
     end
     for i = 1, n do
