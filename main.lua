@@ -22,11 +22,6 @@ end
 
 function KOPrinter:init()
     self:onDispatcherRegisterActions()
-    -- Bring pre-v1.7.0 installs still saving port 8080 onto the port-80
-    -- default, so the mDNS name resolves without a ":8080" suffix. Runs once.
-    require("filesync/filesyncmanager"):migrateSettings()
-    -- Publish the server toggle as a Simple UI quick action (no-op when the
-    -- Simple UI plugin is not installed).
     require("filesync/simpleui"):register()
     self.ui.menu:registerToMainMenu(self)
 end

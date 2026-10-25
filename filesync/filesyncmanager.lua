@@ -55,11 +55,8 @@ function FileSyncManager:new(o)
     return o
 end
 
--- Port used by a fresh install. Port 80 lets users reach the server by typing
--- just the device IP (no ":port" suffix), which matters on e-ink keyboards.
--- It only binds when KOReader runs as root (Kobo/Kindle); elsewhere the server
--- start path falls back to FALLBACK_PORT.
-local DEFAULT_PORT = 80
+-- Port used by a fresh install. Port 631 is the default port for Ipp.
+local DEFAULT_PORT = 631
 -- Port used when binding a privileged port (<1024) fails.
 local FALLBACK_PORT = 8080
 -- mDNS hostname label used by a fresh install: the server answers at
@@ -72,13 +69,8 @@ function FileSyncManager:getPort()
     return self._port
 end
 
---- Build "http://<host>[:port]". Port 80 is the HTTP default, so it is
---- omitted from the URL: "http://192.168.1.5" instead of ":80".
 function FileSyncManager:_buildURL(host)
-    local url = "http://" .. host
-    if self._port ~= 80 then
-        url = url .. ":" .. self._port
-    end
+    local url = "http://" .. host .. self._port
     return url
 end
 
@@ -175,9 +167,6 @@ function FileSyncManager:setSafeMode(enabled)
     G_reader_settings:flush()
 end
 
---- Marks that the one-time 8080 -> 80 port migration has already run.
-local PORT_MIGRATION_KEY = "filesync_port_migrated_to_80"
-
 --- Records the last configured port the privileged-bind notice was shown for.
 local PORT_FALLBACK_NOTICE_KEY = "filesync_port_fallback_notified_for"
 
@@ -187,42 +176,8 @@ local SETTINGS_KEYS = {
     "filesync_port",
     "filesync_safe_mode",
     "filesync_hostname",
-    PORT_MIGRATION_KEY,
     PORT_FALLBACK_NOTICE_KEY,
 }
-
---- One-time migration of the saved port from 8080 to 80.
----
---- Installs that predate the port-80 default (v1.7.0) kept their saved 8080,
---- because that release deliberately left existing ports alone. Since v1.9.0
---- the server also answers to <hostname>.local, and a saved 8080 turns that
---- into "http://koprinter.local:8080" -- the port suffix this name exists to
---- avoid. Move those installs to port 80 once.
----
---- Only the exact value 8080 is touched: any other custom port was chosen
---- deliberately and is left alone. The flag is written on the first run
---- whether or not a port was migrated, so a user who sets 8080 again
---- afterwards keeps it. Devices that cannot bind a privileged port are
---- covered by the fallback in startServer(), which returns them to 8080 at
---- run time without touching the setting.
----
---- @return boolean: true when a saved 8080 was rewritten to 80
-function FileSyncManager:migrateSettings()
-    if G_reader_settings:readSetting(PORT_MIGRATION_KEY) then return false end
-    G_reader_settings:saveSetting(PORT_MIGRATION_KEY, true)
-
-    local migrated = false
-    if G_reader_settings:readSetting("filesync_port") == FALLBACK_PORT then
-        G_reader_settings:saveSetting("filesync_port", DEFAULT_PORT)
-        -- Keep the lazily cached value coherent with what was just written.
-        self._port = DEFAULT_PORT
-        migrated = true
-        logger.info("FileSync: migrated saved port", FALLBACK_PORT, "to", DEFAULT_PORT)
-    end
-
-    G_reader_settings:flush()
-    return migrated
-end
 
 --- Whether the "needs root access" notice should be shown for `port`.
 ---
@@ -321,7 +276,7 @@ function FileSyncManager:configurePort()
         title = _("Server port"),
         input = tostring(self:getPort()),
         input_type = "number",
-        input_hint = "80",
+        input_hint = "631",
         buttons = {
             {
                 {
@@ -396,7 +351,7 @@ function FileSyncManager:getLocalIP()
     local socket = require("socket")
     local s = socket.udp()
     if s then
-        s:setpeername("8.8.8.8", 80)
+        s:setpeername("8.8.8.8", 631)
         local ip = s:getsockname()
         s:close()
         if ip and ip ~= "0.0.0.0" then
