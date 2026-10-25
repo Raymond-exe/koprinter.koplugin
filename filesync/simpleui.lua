@@ -22,7 +22,7 @@ local QA_MODULE = "features/sui_quickactions"
 local CONFIG_MODULE = "infra/sui_config"
 
 local SimpleUI = {
-    QA_ID = "filesync_toggle_server",
+    QA_ID = "koprinter_toggle_server",
     RETRY_INTERVAL = 2, -- seconds between attempts while Simple UI loads
     MAX_ATTEMPTS = 5,
 

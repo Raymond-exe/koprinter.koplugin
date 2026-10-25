@@ -19,8 +19,8 @@ function Utils.getPluginDir()
     local script_path = info.source:match("@(.+)")
     if script_path then
         -- This file is filesync/utils.lua, go up one level to get the plugin root
-        local filesync_dir = script_path:match("(.+)/[^/]+$") or "."
-        _cached_plugin_dir = filesync_dir:match("(.+)/[^/]+$") or "."
+        local koprinter_dir = script_path:match("(.+)/[^/]+$") or "."
+        _cached_plugin_dir = koprinter_dir:match("(.+)/[^/]+$") or "."
     else
         _cached_plugin_dir = "."
     end

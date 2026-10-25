@@ -12,7 +12,7 @@ local KOPrinter = WidgetContainer:extend{
 }
 
 function KOPrinter:onDispatcherRegisterActions()
-    Dispatcher:registerAction("toggle_filesync_server", {
+    Dispatcher:registerAction("toggle_koprinter_server", {
         category = "none",
         event = "ToggleFileSyncServer",
         title = _("Toggle KOPrint server"),

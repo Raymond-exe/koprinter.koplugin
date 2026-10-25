@@ -65,7 +65,7 @@ local DEFAULT_HOSTNAME = "koprinter"
 
 function FileSyncManager:getPort()
     if self._port then return self._port end
-    self._port = G_reader_settings:readSetting("filesync_port", DEFAULT_PORT)
+    self._port = G_reader_settings:readSetting("koprinter_port", DEFAULT_PORT)
     return self._port
 end
 
@@ -87,13 +87,13 @@ end
 
 function FileSyncManager:setPort(port)
     self._port = port
-    G_reader_settings:saveSetting("filesync_port", port)
+    G_reader_settings:saveSetting("koprinter_port", port)
     G_reader_settings:flush()
 end
 
 function FileSyncManager:getHostname()
     if self._hostname then return self._hostname end
-    self._hostname = G_reader_settings:readSetting("filesync_hostname", DEFAULT_HOSTNAME)
+    self._hostname = G_reader_settings:readSetting("koprinter_hostname", DEFAULT_HOSTNAME)
     return self._hostname
 end
 
@@ -102,7 +102,7 @@ end
 --- is untouched. The caller is responsible for validation.
 function FileSyncManager:setHostname(hostname)
     self._hostname = hostname
-    G_reader_settings:saveSetting("filesync_hostname", hostname)
+    G_reader_settings:saveSetting("koprinter_hostname", hostname)
     G_reader_settings:flush()
     if self._running then
         self:stopMdns()
@@ -159,23 +159,23 @@ function FileSyncManager:stopMdns()
 end
 
 function FileSyncManager:getSafeMode()
-    return G_reader_settings:readSetting("filesync_safe_mode", true)
+    return G_reader_settings:readSetting("koprinter_safe_mode", true)
 end
 
 function FileSyncManager:setSafeMode(enabled)
-    G_reader_settings:saveSetting("filesync_safe_mode", enabled)
+    G_reader_settings:saveSetting("koprinter_safe_mode", enabled)
     G_reader_settings:flush()
 end
 
 --- Records the last configured port the privileged-bind notice was shown for.
-local PORT_FALLBACK_NOTICE_KEY = "filesync_port_fallback_notified_for"
+local PORT_FALLBACK_NOTICE_KEY = "koprinter_port_fallback_notified_for"
 
 --- Settings this plugin persists in G_reader_settings. Kept in one place so
 --- deleteSettings() cannot drift from the readers/writers above.
 local SETTINGS_KEYS = {
-    "filesync_port",
-    "filesync_safe_mode",
-    "filesync_hostname",
+    "koprinter_port",
+    "koprinter_safe_mode",
+    "koprinter_hostname",
     PORT_FALLBACK_NOTICE_KEY,
 }
 
@@ -658,7 +658,7 @@ function FileSyncManager:showQRCode()
     -- the buttons below; it is created up-front because the ButtonTables need
     -- it as their show_parent.
     local widget = FocusManager:new{
-        name = "filesync_qrcode",
+        name = "koprinter_qrcode",
         covers_fullscreen = true, -- hint for UIManager:_repaint()
         width = screen_width,
         height = screen_height,
