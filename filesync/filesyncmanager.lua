@@ -465,27 +465,12 @@ function FileSyncManager:start(silent)
         end
 
         local port = self:getPort()
-        local root_dir = self:getRootDir()
-
-        -- Start the HTTP server
         local HttpServer = require("filesync/httpserver")
-        -- Screen/model info for /api/health. Built here and handed to the
-        -- server so httpserver.lua needn't require KOReader's Device.
-        -- Guarded: a problem here must never keep the server from starting.
-        local ok_di, device_info_provider = pcall(function()
-            return require("filesync/deviceinfo").provider(Device)
-        end)
-        if not ok_di then
-            logger.warn("FileSync: device info disabled:", device_info_provider)
-            device_info_provider = nil
-        end
+        local IppHandler = require("filesync/handler")
         local function tryStart(p)
             return pcall(function()
-                self._server = HttpServer:new{
-                    port = p,
-                    root_dir = root_dir,
-                    device_info_provider = device_info_provider,
-                }
+                self._server = HttpServer:new({port = p})
+                self._server.ipp_handler = IppHandler.new({ port = self._server.port, printer_name = "Kindle PDF" }) -- TODO parameterize printer_name
                 self._server:start()
             end)
         end
