@@ -55,7 +55,7 @@ end
 -- Port used by a fresh install. Port 631 is the default port for Ipp.
 local DEFAULT_PORT = 631
 -- Port used when binding a privileged port (<1024) fails.
-local FALLBACK_PORT = 8080
+local FALLBACK_PORT = 6310
 
 function FileSyncManager:getPort()
     if self._port then return self._port end
@@ -86,14 +86,6 @@ local SETTINGS_KEYS = {
 }
 
 --- Whether the "needs root access" notice should be shown for `port`.
----
---- Binding a privileged port fails on every start on Android and desktop, so
---- an unconditional notice reappears each time the server comes up. Show it
---- once per configured port instead: enough to explain the ":8080" in the
---- URL, without nagging devices that can never bind a low port. Choosing a
---- different port arms the notice again, since that is a new setting whose
---- outcome the user has not been told about yet. Only the last port is
---- remembered, so switching back to an earlier one reports again.
 ---
 --- @return boolean: true when the notice has not yet been shown for this port
 function FileSyncManager:shouldNotifyPortFallback(port)
