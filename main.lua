@@ -54,6 +54,46 @@ function KOPrinter:addToMainMenu(menu_items)
                 keep_menu_open = true,
             },
             {
+                text_func = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    local T = require("ffi/util").template
+                    return T(_("Hostname: %1"), FileSyncManager:getHostname() .. ".local")
+                end,
+                help_text = _("Name under which the server is reachable on the local network (e.g. http://koprinter.local). Works out of the box on macOS, iOS and Windows; Linux needs avahi; most Android browsers cannot resolve .local names, so use the IP address or QR code there."),
+                callback = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    FileSyncManager:configureHostname()
+                end,
+                keep_menu_open = true,
+            },
+            {
+                text = _("Safe mode"),
+                help_text = _([[When enabled, the web interface only lists document and image formats KOReader can open, and hides sidecar metadata folders and hidden files.
+
+Disable it to browse every file on the device, including hidden files and folders.]]),
+                checked_func = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    return FileSyncManager:getSafeMode()
+                end,
+                callback = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    FileSyncManager:setSafeMode(not FileSyncManager:getSafeMode())
+                end,
+                keep_menu_open = true,
+            },
+            {
+                text = _("Show QR code"),
+                enabled_func = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    return FileSyncManager:isRunning()
+                end,
+                callback = function()
+                    local FileSyncManager = require("printserver/filesyncmanager")
+                    FileSyncManager:showQRCode()
+                end,
+                keep_menu_open = false,
+            },
+            {
                 text = _("About"),
                 callback = function()
                     local UIManager = require("ui/uimanager")
