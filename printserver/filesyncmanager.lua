@@ -322,6 +322,10 @@ function FileSyncManager:start(silent)
         self._port = port
         self:preventStandby()
         logger.info("FileSync: Server started on", ip .. ":" .. port)
+        UIManager:show(InfoMessage:new{
+            text = _("Print server started."),
+            timeout = 2,
+        })
     end
 
     -- WiFi gate. In silent mode (auto-start on resume) we never want to
@@ -366,7 +370,7 @@ function FileSyncManager:stop(silent)
 
     self._running = false
     self:allowStandby()
-    logger.info("FileSync: Server stopped")
+    logger.info("KoPrinter: Print Server stopped")
 
     if not silent then
         -- Pick up whatever was uploaded while the server was running, then say
@@ -375,7 +379,7 @@ function FileSyncManager:stop(silent)
         -- is all it ever bought us.
         Utils.refreshFileList()
         UIManager:show(InfoMessage:new{
-            text = _("FileSync server stopped."),
+            text = _("Print server stopped."),
             timeout = 2,
         })
     end
@@ -386,14 +390,14 @@ function FileSyncManager:preventStandby()
 
     -- 1. Prevent standby (light sleep / screen off)
     UIManager:preventStandby()
-    logger.info("FileSync: Standby prevented")
+    logger.info("KoPrinter: Standby prevented")
 
     -- 2. Pause auto-suspend via the officially supported PluginShare flag.
     --    KOReader's autosuspend plugin checks this flag on every schedule
     --    cycle and resets the suspend countdown while it is truthy.
     local PluginShare = require("pluginshare")
     PluginShare.pause_auto_suspend = true
-    logger.info("FileSync: Auto-suspend paused via PluginShare")
+    logger.info("KoPrinter: Auto-suspend paused via PluginShare")
 
     self._standby_prevented = true
 end

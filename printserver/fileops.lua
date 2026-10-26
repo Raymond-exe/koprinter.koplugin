@@ -1,4 +1,4 @@
---- File operations module for the FileSync plugin.
+--- File operations module for the KoPrinter plugin.
 --- Handles directory listing, file upload/download, rename, delete, metadata extraction
 --- (EPUB OPF parsing), and cover image extraction.
 --- MOBI/AZW3 binary header parsing is delegated to printserver/mobi.
@@ -12,7 +12,7 @@ if not ok then
     ok, lfs = pcall(require, "libs/libkoreader-lfs")
 end
 if not ok then
-    error("FileSync: cannot load LFS filesystem module")
+    error("KoPrinter: cannot load LFS filesystem module")
 end
 local Utils = require("printserver/utils")
 local Mobi = require("printserver/mobi")
@@ -348,7 +348,7 @@ function FileOps:writeTextFile(rel_path, content)
         return false, "Cannot write file: " .. tostring(write_err)
     end
 
-    logger.info("FileSync: Saved text file", full_path)
+    logger.info("KoPrinter: Saved text file", full_path)
     return true
 end
 
@@ -610,16 +610,16 @@ function FileOps:handleUpload(rel_dir, body, boundary)
                         f:close()
                         if write_ok then
                             uploaded_count = uploaded_count + 1
-                            logger.info("FileSync: Uploaded", filename, "to", dir_path)
+                            logger.info("KoPrinter: Uploaded", filename, "to", dir_path)
                         else
-                            logger.warn("FileSync: Write failed for", file_path, write_err)
+                            logger.warn("KoPrinter: Write failed for", file_path, write_err)
                             pcall(os.remove, file_path)
                         end
                     else
-                        logger.warn("FileSync: Cannot write file", file_path)
+                        logger.warn("KoPrinter: Cannot write file", file_path)
                     end
                 else
-                    logger.warn("FileSync: Invalid filename:", filename, valid_err)
+                    logger.warn("KoPrinter: Invalid filename:", filename, valid_err)
                 end
             end
         end
@@ -687,7 +687,7 @@ function FileOps:createDirectory(rel_path, options)
         return false, "Cannot create directory: " .. tostring(mkdir_err)
     end
 
-    logger.info("FileSync: Created directory", full_path)
+    logger.info("KoPrinter: Created directory", full_path)
     return true
 end
 
@@ -716,7 +716,7 @@ function FileOps:_createDirectoryRecursive(full_path)
             if not ok then
                 return false, "Cannot create directory: " .. tostring(mkdir_err)
             end
-            logger.info("FileSync: Created directory", current)
+            logger.info("KoPrinter: Created directory", current)
         end
     end
 
@@ -759,7 +759,7 @@ function FileOps:rename(old_rel_path, new_rel_path)
         return false, "Cannot rename: " .. tostring(rename_err)
     end
 
-    logger.info("FileSync: Renamed", old_path, "to", new_path)
+    logger.info("KoPrinter: Renamed", old_path, "to", new_path)
     return true
 end
 
@@ -798,7 +798,7 @@ function FileOps:delete(rel_path, options)
         end
     end
 
-    logger.info("FileSync: Deleted", full_path)
+    logger.info("KoPrinter: Deleted", full_path)
 
     -- Handle .sdr metadata directory cleanup for files
     if is_file and options then
@@ -817,9 +817,9 @@ function FileOps:delete(rel_path, options)
             if sdr_attr and sdr_attr.mode == "directory" then
                 local sdr_ok, sdr_err = self:_deleteRecursive(sdr_path)
                 if sdr_ok then
-                    logger.info("FileSync: Deleted .sdr metadata directory", sdr_path)
+                    logger.info("KoPrinter: Deleted .sdr metadata directory", sdr_path)
                 else
-                    logger.warn("FileSync: Failed to delete .sdr directory", sdr_path, sdr_err)
+                    logger.warn("KoPrinter: Failed to delete .sdr directory", sdr_path, sdr_err)
                 end
             end
         end
@@ -847,7 +847,7 @@ function FileOps:_countFilesRecursive(path)
         end
     end)
     if not ok then
-        logger.warn("FileSync: Error counting files in", path, iter_err)
+        logger.warn("KoPrinter: Error counting files in", path, iter_err)
     end
     return count
 end

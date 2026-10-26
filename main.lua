@@ -14,7 +14,7 @@ local KOPrinter = WidgetContainer:extend{
 function KOPrinter:onDispatcherRegisterActions()
     Dispatcher:registerAction("toggle_koprinter_server", {
         category = "none",
-        event = "ToggleFileSyncServer",
+        event = "TogglePrintServer",
         title = _("Toggle KOPrint server"),
         general = true,
     })
@@ -41,12 +41,12 @@ function KOPrinter:addToMainMenu(menu_items)
                     end
                 end,
                 callback = function()
-                    self:onToggleFileSyncServer()
+                    self:onTogglePrintServer()
                 end,
                 keep_menu_open = false,
             },
             {
-                text = _("Server port"),
+                text = _("Configure server port"),
                 callback = function()
                     local FileSyncManager = require("printserver/filesyncmanager")
                     FileSyncManager:configurePort()
@@ -69,7 +69,7 @@ function KOPrinter:addToMainMenu(menu_items)
     }
 end
 
-function KOPrinter:onToggleFileSyncServer()
+function KOPrinter:onTogglePrintServer()
     local FileSyncManager = require("printserver/filesyncmanager")
     if FileSyncManager:isRunning() then
         -- A non-silent stop refreshes the file list and reports back itself.

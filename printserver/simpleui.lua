@@ -68,7 +68,7 @@ function SimpleUI:getDescriptor()
         is_async_in_place = true,
         execute = function()
             -- Reuse the Dispatcher event so the toggle logic stays in main.lua.
-            UIManager:broadcastEvent(Event:new("ToggleFileSyncServer"))
+            UIManager:broadcastEvent(Event:new("TogglePrintServer"))
         end,
     }
 end
