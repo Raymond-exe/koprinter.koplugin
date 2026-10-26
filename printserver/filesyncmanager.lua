@@ -2,8 +2,8 @@
 --- Handles starting/stopping the HTTP server, WiFi/IP detection, battery checks,
 --- QR code display, standby prevention, and Kindle firewall rules.
 ---
---- Key dependencies: device (KOReader), UIManager (KOReader), filesync/httpserver,
---- filesync/mdns
+--- Key dependencies: device (KOReader), UIManager (KOReader), printserver/httpserver,
+--- printserver/mdns
 
 local BD = require("ui/bidi")
 local Blitbuffer = require("ffi/blitbuffer")
@@ -30,7 +30,7 @@ local Font = require("ui/font")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local ImageWidget = require("ui/widget/imagewidget")
-local Utils = require("filesync/utils")
+local Utils = require("printserver/utils")
 local logger = require("logger")
 local Screen = Device.screen
 local _ = require("gettext")
@@ -122,7 +122,7 @@ end
 function FileSyncManager:startMdns()
     if self._mdns then return self._mdns:isRunning() end
     local ok, result = pcall(function()
-        local Mdns = require("filesync/mdns")
+        local Mdns = require("printserver/mdns")
         local mdns = Mdns:new{
             hostname = self:getHostname(),
             port = self._port,
@@ -143,7 +143,7 @@ function FileSyncManager:startMdns()
     end
     self._mdns = result
     if Device:isKindle() then
-        self:openKindleFirewall(require("filesync/mdns").MDNS_PORT, "udp")
+        self:openKindleFirewall(require("printserver/mdns").MDNS_PORT, "udp")
     end
     return true
 end
@@ -154,7 +154,7 @@ function FileSyncManager:stopMdns()
     pcall(function() self._mdns:stop() end)
     self._mdns = nil
     if Device:isKindle() then
-        self:closeKindleFirewall(require("filesync/mdns").MDNS_PORT, "udp")
+        self:closeKindleFirewall(require("printserver/mdns").MDNS_PORT, "udp")
     end
 end
 
@@ -214,7 +214,7 @@ end
 --- Normalize and validate a hostname label typed by the user.
 --- @return string|nil: the lowercased label, or nil plus an error message
 function FileSyncManager:validateHostname(input)
-    local Mdns = require("filesync/mdns")
+    local Mdns = require("printserver/mdns")
     local label = (input or ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
     if label:match("%.local$") then
         return nil, _("Enter only the name, without \".local\"; it is added automatically.")
@@ -420,8 +420,8 @@ function FileSyncManager:start(silent)
         end
 
         local port = self:getPort()
-        local HttpServer = require("filesync/httpserver")
-        local IppHandler = require("filesync/handler")
+        local HttpServer = require("printserver/httpserver")
+        local IppHandler = require("printserver/handler")
         local function tryStart(p)
             return pcall(function()
                 self._server = HttpServer:new({port = p})
@@ -674,7 +674,7 @@ function FileSyncManager:showQRCode()
     }
 
     -- Icon + Title row
-    local icon_path = Utils.getPluginDir() .. "/filesync/icon.png"
+    local icon_path = Utils.getPluginDir() .. "/printserver/icon.png"
     local icon_size = Screen:scaleBySize(36)
     local icon_widget = ImageWidget:new{
         file = icon_path,

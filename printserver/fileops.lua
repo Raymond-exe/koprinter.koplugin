@@ -1,9 +1,9 @@
 --- File operations module for the FileSync plugin.
 --- Handles directory listing, file upload/download, rename, delete, metadata extraction
 --- (EPUB OPF parsing), and cover image extraction.
---- MOBI/AZW3 binary header parsing is delegated to filesync/mobi.
+--- MOBI/AZW3 binary header parsing is delegated to printserver/mobi.
 ---
---- Key dependencies: lfs (LuaFileSystem), filesync/utils, filesync/mobi
+--- Key dependencies: lfs (LuaFileSystem), printserver/utils, printserver/mobi
 --- Note: EPUB metadata extraction shells out to `unzip` via io.popen.
 
 -- Try standard require first, then KOReader's internal path
@@ -14,8 +14,8 @@ end
 if not ok then
     error("FileSync: cannot load LFS filesystem module")
 end
-local Utils = require("filesync/utils")
-local Mobi = require("filesync/mobi")
+local Utils = require("printserver/utils")
+local Mobi = require("printserver/mobi")
 local logger = require("logger")
 
 local SAFE_MODE_EXTENSIONS = {
@@ -330,7 +330,7 @@ function FileOps:writeTextFile(rel_path, content)
 
     -- Never overwrite the plugin's served web UI (defense in depth).
     local plugin_dir = Utils.getPluginDir()
-    local protected_index = plugin_dir ~= "." and (plugin_dir .. "/filesync/static/index.html") or nil
+    local protected_index = plugin_dir ~= "." and (plugin_dir .. "/printserver/static/index.html") or nil
     if protected_index and full_path == protected_index then
         return false, "Protected file"
     end

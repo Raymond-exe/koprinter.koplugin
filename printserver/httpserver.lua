@@ -4,7 +4,7 @@
 --- Delegates file operations to the fileops module and uses the shared json module
 --- for request/response serialization.
 ---
---- Key dependencies: socket (LuaSocket), UIManager (KOReader), filesync/json, filesync/fileops
+--- Key dependencies: socket (LuaSocket), UIManager (KOReader), printserver/json, printserver/fileops
 
 local logger = require("logger")
 local socket = require("socket")

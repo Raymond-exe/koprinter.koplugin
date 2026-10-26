@@ -22,7 +22,7 @@ end
 
 function KOPrinter:init()
     self:onDispatcherRegisterActions()
-    require("filesync/simpleui"):register()
+    require("printserver/simpleui"):register()
     self.ui.menu:registerToMainMenu(self)
 end
 
@@ -33,7 +33,7 @@ function KOPrinter:addToMainMenu(menu_items)
         sub_item_table = {
             {
                 text_func = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     if FileSyncManager:isRunning() then
                         return _("Stop print server")
                     else
@@ -48,20 +48,20 @@ function KOPrinter:addToMainMenu(menu_items)
             {
                 text = _("Server port"),
                 callback = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     FileSyncManager:configurePort()
                 end,
                 keep_menu_open = true,
             },
             {
                 text_func = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     local T = require("ffi/util").template
                     return T(_("Hostname: %1"), FileSyncManager:getHostname() .. ".local")
                 end,
                 help_text = _("Name under which the server is reachable on the local network (e.g. http://koprinter.local). Works out of the box on macOS, iOS and Windows; Linux needs avahi; most Android browsers cannot resolve .local names, so use the IP address or QR code there."),
                 callback = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     FileSyncManager:configureHostname()
                 end,
                 keep_menu_open = true,
@@ -72,11 +72,11 @@ function KOPrinter:addToMainMenu(menu_items)
 
 Disable it to browse every file on the device, including hidden files and folders.]]),
                 checked_func = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     return FileSyncManager:getSafeMode()
                 end,
                 callback = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     FileSyncManager:setSafeMode(not FileSyncManager:getSafeMode())
                 end,
                 keep_menu_open = true,
@@ -84,11 +84,11 @@ Disable it to browse every file on the device, including hidden files and folder
             {
                 text = _("Show QR code"),
                 enabled_func = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     return FileSyncManager:isRunning()
                 end,
                 callback = function()
-                    local FileSyncManager = require("filesync/filesyncmanager")
+                    local FileSyncManager = require("printserver/filesyncmanager")
                     FileSyncManager:showQRCode()
                 end,
                 keep_menu_open = false,
@@ -110,7 +110,7 @@ Disable it to browse every file on the device, including hidden files and folder
 end
 
 function KOPrinter:onToggleFileSyncServer()
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     if FileSyncManager:isRunning() then
         -- A non-silent stop refreshes the file list and reports back itself.
         FileSyncManager:stop()
@@ -120,7 +120,7 @@ function KOPrinter:onToggleFileSyncServer()
 end
 
 function KOPrinter:onSuspend()
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     if FileSyncManager:isRunning() then
         FileSyncManager._was_running_before_suspend = true
         FileSyncManager:stop(true) -- silent stop
@@ -128,7 +128,7 @@ function KOPrinter:onSuspend()
 end
 
 function KOPrinter:onResume()
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     if FileSyncManager._was_running_before_suspend then
         FileSyncManager._was_running_before_suspend = false
         FileSyncManager:start(true) -- silent start (no QR code)
@@ -148,7 +148,7 @@ end
 --- appear: settings live as flat keys in G_reader_settings, so neither
 --- settings_file nor settings_key applies here.
 function KOPrinter:deletePluginSettings()
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     FileSyncManager:deleteSettings()
 end
 
@@ -156,7 +156,7 @@ end
 --- Shuts the HTTP server down (and drops the Kindle firewall rules) so nothing
 --- outlives the deletion; the caller restarts KOReader afterwards.
 function KOPrinter:stopPlugin(force)
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     if not FileSyncManager:isRunning() then
         return true
     end
@@ -170,7 +170,7 @@ function KOPrinter:stopPlugin(force)
 end
 
 function KOPrinter:onExit()
-    local FileSyncManager = require("filesync/filesyncmanager")
+    local FileSyncManager = require("printserver/filesyncmanager")
     if FileSyncManager:isRunning() then
         FileSyncManager:stop(true)
     end

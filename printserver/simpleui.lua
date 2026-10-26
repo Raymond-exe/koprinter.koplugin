@@ -15,7 +15,7 @@
 local UIManager = require("ui/uimanager")
 local Event = require("ui/event")
 local logger = require("logger")
-local Utils = require("filesync/utils")
+local Utils = require("printserver/utils")
 local _ = require("gettext")
 
 local QA_MODULE = "features/sui_quickactions"
@@ -51,11 +51,11 @@ function SimpleUI:getDescriptor()
     return {
         id = self.QA_ID,
         label = _("Print server"),
-        icon = Utils.getPluginDir() .. "/filesync/icon.png",
+        icon = Utils.getPluginDir() .. "/printserver/icon.png",
         -- Called on every render: reflect the current server state.
         get_label = function()
             local ok, running = pcall(function()
-                return require("filesync/filesyncmanager"):isRunning()
+                return require("printserver/filesyncmanager"):isRunning()
             end)
             if ok and running then
                 return _("Stop print server")
