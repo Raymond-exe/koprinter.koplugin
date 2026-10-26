@@ -264,11 +264,11 @@ end
 ------------------------------------------------------------------------------
 
 --- Create a responder. Nothing is bound until start() is called.
---- @param o table: { hostname = "filesync", port = 631, ip = "192.168.1.5" }
+--- @param o table: { hostname = "koprinter", port = 631, ip = "192.168.1.5" }
 function Mdns:new(o)
     o = o or {}
     setmetatable(o, self)
-    o.hostname = o.hostname or "filesync"
+    o.hostname = o.hostname or "koprinter"
     o.port = o.port or 631
     o.ip = o.ip
     o._socket = nil

@@ -7,7 +7,7 @@
 --- features/sui_quickactions.lua (QA.register(descriptor)). The registry lives
 --- in memory only, so registration must happen on every KOReader start.
 ---
---- Plugins are loaded alphabetically, so "filesync" is initialised before
+--- Plugins are loaded alphabetically, so "koprinter" is initialised before
 --- "simpleui" and the Quick Actions module usually is not available yet on our
 --- first attempt. We therefore retry a few times before giving up. When Simple
 --- UI is not installed at all, every attempt is a silent no-op.
@@ -106,12 +106,12 @@ function SimpleUI:register()
         end
     end)
     if not ok then
-        logger.warn("filesync: Simple UI quick action registration failed: " .. tostring(err))
+        logger.warn("koprinter: Simple UI quick action registration failed: " .. tostring(err))
         return false
     end
 
     self._registered = true
-    logger.dbg("filesync: registered Simple UI quick action")
+    logger.dbg("koprinter: registered Simple UI quick action")
     return true
 end
 

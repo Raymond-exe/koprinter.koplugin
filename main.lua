@@ -27,7 +27,7 @@ function KOPrinter:init()
 end
 
 function KOPrinter:addToMainMenu(menu_items)
-    menu_items.filesync = {
+    menu_items.koprinter = {
         text = _("KOPrinter"),
         sorting_hint = "network",
         sub_item_table = {
@@ -100,7 +100,7 @@ Disable it to browse every file on the device, including hidden files and folder
                     local InfoMessage = require("ui/widget/infomessage")
                     local T = require("ffi/util").template
                     UIManager:show(InfoMessage:new{
-                        text = T(_("KOPrinter v%1\n\nWireless file manager for KOReader.\n\nStart the server, scan the QR code with your phone, and manage your books from any browser on the same WiFi network.\n\nProject:\ngithub.com/abrahamnm/filesync.koplugin"), plugin_meta.version),
+                        text = T(_("KOPrinter v%1\n\nPrint Server plugin for KOReader.\n\nForked from abrahamnm/filesync.koplugin"), plugin_meta.version),
                     })
                 end,
                 keep_menu_open = true,

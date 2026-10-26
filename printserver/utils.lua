@@ -12,7 +12,7 @@ local _cached_plugin_dir = nil
 
 --- Get the plugin root directory path.
 --- Computes the path from the source location of this file and caches the result.
---- @return string: absolute path to the plugin directory (e.g., "/mnt/us/koreader/plugins/filesync.koplugin")
+--- @return string: absolute path to the plugin directory (e.g., "/mnt/us/koreader/plugins/koprinter.koplugin")
 function Utils.getPluginDir()
     if _cached_plugin_dir then return _cached_plugin_dir end
     local info = debug.getinfo(1, "S")
