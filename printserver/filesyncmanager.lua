@@ -70,7 +70,7 @@ function FileSyncManager:getPort()
 end
 
 function FileSyncManager:_buildURL(host)
-    local url = "http://" .. host .. self._port
+    local url = "http://" .. host .. ":" .. self._port
     return url
 end
 
