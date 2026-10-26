@@ -3,7 +3,6 @@
 --- QR code display, standby prevention, and Kindle firewall rules.
 ---
 --- Key dependencies: device (KOReader), UIManager (KOReader), printserver/httpserver,
---- printserver/mdns
 
 local BD = require("ui/bidi")
 local Blitbuffer = require("ffi/blitbuffer")
@@ -39,9 +38,7 @@ local T = require("ffi/util").template
 local FileSyncManager = {
     _running = false,
     _server = nil,
-    _mdns = nil,
     _port = nil,
-    _hostname = nil,
     _ip = nil,
     _was_running_before_suspend = false,
     _standby_prevented = false,
@@ -59,9 +56,6 @@ end
 local DEFAULT_PORT = 631
 -- Port used when binding a privileged port (<1024) fails.
 local FALLBACK_PORT = 8080
--- mDNS hostname label used by a fresh install: the server answers at
--- http://koprinter.local. The ".local" suffix is always appended by the plugin.
-local DEFAULT_HOSTNAME = "koprinter"
 
 function FileSyncManager:getPort()
     if self._port then return self._port end
@@ -79,104 +73,16 @@ function FileSyncManager:getServerURL()
     return self:_buildURL(self._ip)
 end
 
---- Build the mDNS URL (e.g. "http://koprinter.local"). Only meaningful while
---- the responder is running; see isMdnsRunning().
-function FileSyncManager:getServerHostnameURL()
-    return self:_buildURL(self:getHostname() .. ".local")
-end
-
 function FileSyncManager:setPort(port)
     self._port = port
     G_reader_settings:saveSetting("koprinter_port", port)
     G_reader_settings:flush()
 end
 
-function FileSyncManager:getHostname()
-    if self._hostname then return self._hostname end
-    self._hostname = G_reader_settings:readSetting("koprinter_hostname", DEFAULT_HOSTNAME)
-    return self._hostname
-end
-
---- Persist a new hostname label and, if the server is running, restart the
---- mDNS responder so the new name takes effect immediately. The HTTP server
---- is untouched. The caller is responsible for validation.
-function FileSyncManager:setHostname(hostname)
-    self._hostname = hostname
-    G_reader_settings:saveSetting("koprinter_hostname", hostname)
-    G_reader_settings:flush()
-    if self._running then
-        self:stopMdns()
-        self:startMdns()
-    end
-end
-
---- Whether the mDNS responder is up, i.e. whether the .local URL can be
---- expected to work.
-function FileSyncManager:isMdnsRunning()
-    return self._mdns ~= nil and self._mdns:isRunning()
-end
-
---- Start the mDNS responder for the running server. Failure is logged and
---- otherwise ignored: the HTTP server keeps working by IP.
---- @return boolean: true when the responder started
-function FileSyncManager:startMdns()
-    if self._mdns then return self._mdns:isRunning() end
-    local ok, result = pcall(function()
-        local Mdns = require("printserver/mdns")
-        local mdns = Mdns:new{
-            hostname = self:getHostname(),
-            port = self._port,
-            ip = self._ip,
-        }
-        if not mdns:start() then
-            return nil
-        end
-        return mdns
-    end)
-    if not ok then
-        logger.warn("FileSync: mDNS responder failed to start:", result)
-        return false
-    end
-    if not result then
-        -- Mdns:start() already logged the reason.
-        return false
-    end
-    self._mdns = result
-    if Device:isKindle() then
-        self:openKindleFirewall(require("printserver/mdns").MDNS_PORT, "udp")
-    end
-    return true
-end
-
---- Stop the mDNS responder (sends the goodbye packet), if running.
-function FileSyncManager:stopMdns()
-    if not self._mdns then return end
-    pcall(function() self._mdns:stop() end)
-    self._mdns = nil
-    if Device:isKindle() then
-        self:closeKindleFirewall(require("printserver/mdns").MDNS_PORT, "udp")
-    end
-end
-
-function FileSyncManager:getSafeMode()
-    return G_reader_settings:readSetting("koprinter_safe_mode", true)
-end
-
-function FileSyncManager:setSafeMode(enabled)
-    G_reader_settings:saveSetting("koprinter_safe_mode", enabled)
-    G_reader_settings:flush()
-end
-
---- Records the last configured port the privileged-bind notice was shown for.
-local PORT_FALLBACK_NOTICE_KEY = "koprinter_port_fallback_notified_for"
-
 --- Settings this plugin persists in G_reader_settings. Kept in one place so
 --- deleteSettings() cannot drift from the readers/writers above.
 local SETTINGS_KEYS = {
     "koprinter_port",
-    "koprinter_safe_mode",
-    "koprinter_hostname",
-    PORT_FALLBACK_NOTICE_KEY,
 }
 
 --- Whether the "needs root access" notice should be shown for `port`.
@@ -208,65 +114,6 @@ function FileSyncManager:deleteSettings()
     G_reader_settings:flush()
     -- Drop the cached values so a still-loaded instance re-reads the defaults.
     self._port = nil
-    self._hostname = nil
-end
-
---- Normalize and validate a hostname label typed by the user.
---- @return string|nil: the lowercased label, or nil plus an error message
-function FileSyncManager:validateHostname(input)
-    local Mdns = require("printserver/mdns")
-    local label = (input or ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
-    if label:match("%.local$") then
-        return nil, _("Enter only the name, without \".local\"; it is added automatically.")
-    end
-    if not Mdns.isValidHostname(label) then
-        return nil, _("Invalid hostname. Use 1-63 characters: lowercase letters, digits and hyphens, not starting or ending with a hyphen.")
-    end
-    return label
-end
-
-function FileSyncManager:configureHostname()
-    local InputDialog = require("ui/widget/inputdialog")
-    local hostname_dialog
-    hostname_dialog = InputDialog:new{
-        title = _("Hostname"),
-        description = _("The server is also reachable at http://<hostname>.local on networks and devices that support mDNS. Enter only the name; \".local\" is added automatically."),
-        input = self:getHostname(),
-        input_hint = DEFAULT_HOSTNAME,
-        buttons = {
-            {
-                {
-                    text = _("Cancel"),
-                    id = "close",
-                    callback = function()
-                        UIManager:close(hostname_dialog)
-                    end,
-                },
-                {
-                    text = _("Save"),
-                    is_enter_default = true,
-                    callback = function()
-                        local label, err = self:validateHostname(hostname_dialog:getInputText())
-                        if not label then
-                            UIManager:show(InfoMessage:new{
-                                text = err,
-                                timeout = 4,
-                            })
-                            return
-                        end
-                        self:setHostname(label)
-                        UIManager:close(hostname_dialog)
-                        UIManager:show(InfoMessage:new{
-                            text = T(_("Hostname set to %1"), label .. ".local"),
-                            timeout = 3,
-                        })
-                    end,
-                },
-            },
-        },
-    }
-    UIManager:show(hostname_dialog)
-    hostname_dialog:onShowKeyboard()
 end
 
 function FileSyncManager:configurePort()
@@ -475,14 +322,6 @@ function FileSyncManager:start(silent)
         self._port = port
         self:preventStandby()
         logger.info("FileSync: Server started on", ip .. ":" .. port)
-
-        -- Advertise <hostname>.local now that the effective port is known.
-        -- Any failure here is logged and ignored; the IP URL keeps working.
-        self:startMdns()
-
-        if not silent then
-            self:showQRCode()
-        end
     end
 
     -- WiFi gate. In silent mode (auto-start on resume) we never want to
@@ -512,9 +351,6 @@ function FileSyncManager:stop(silent)
 
     -- Close QR screen if open
     self:closeQRScreen()
-
-    -- Say goodbye on mDNS before the HTTP server goes away
-    self:stopMdns()
 
     if self._server then
         pcall(function()
@@ -635,311 +471,23 @@ function FileSyncManager:confirmLeaveQRScreen()
     })
 end
 
---- Display a full-screen QR code with the server URL, stop button, and close button.
---- Requires the server to be running (with a valid IP address).
-function FileSyncManager:showQRCode()
-    if not self._running or not self._ip then
-        UIManager:show(InfoMessage:new{
-            text = _("Server is not running."),
-            timeout = 2,
-        })
-        return
-    end
-
-    -- Close any existing QR screen first
-    self:closeQRScreen()
-
-    local url = self:getServerURL()
-    local screen_width = Screen:getWidth()
-    local screen_height = Screen:getHeight()
-    local manager = self
-
-    -- The popup is a FocusManager so that D-pad devices can move focus between
-    -- the buttons below; it is created up-front because the ButtonTables need
-    -- it as their show_parent.
-    local widget = FocusManager:new{
-        name = "koprinter_qrcode",
-        covers_fullscreen = true, -- hint for UIManager:_repaint()
-        width = screen_width,
-        height = screen_height,
-        layout = {},
-    }
-
-    -- Build the QR code widget
-    local qr_size = Screen:scaleBySize(260)
-    local qr_widget = QRWidget:new{
-        text = url,
-        width = qr_size,
-        height = qr_size,
-    }
-
-    -- Icon + Title row
-    local icon_path = Utils.getPluginDir() .. "/printserver/icon.png"
-    local icon_size = Screen:scaleBySize(36)
-    local icon_widget = ImageWidget:new{
-        file = icon_path,
-        width = icon_size,
-        height = icon_size,
-        alpha = true,
-    }
-    local title_text = TextWidget:new{
-        text = _("FileSync"),
-        face = Font:getFace("infofont", 48),
-        bold = true,
-        fgcolor = Blitbuffer.COLOR_BLACK,
-    }
-    local title_widget = HorizontalGroup:new{
-        align = "center",
-        icon_widget,
-        HorizontalSpan:new{ width = Screen:scaleBySize(10) },
-        title_text,
-    }
-
-    -- URL text. When the mDNS responder is up, the memorable .local URL comes
-    -- first and the IP URL beneath it as a fallback; the QR payload stays the
-    -- IP URL because .local resolution depends on the client OS.
-    local url_font = Font:getFace("infofont", 22)
-    local url_max_width = screen_width - Screen:scaleBySize(40)
-    local url_widget
-    if self:isMdnsRunning() then
-        url_widget = VerticalGroup:new{
-            align = "center",
-            TextWidget:new{
-                text = self:getServerHostnameURL(),
-                face = url_font,
-                fgcolor = Blitbuffer.COLOR_BLACK,
-                max_width = url_max_width,
-            },
-            VerticalSpan:new{ width = Screen:scaleBySize(6) },
-            TextWidget:new{
-                text = url,
-                face = Font:getFace("infofont", 18),
-                fgcolor = Blitbuffer.COLOR_BLACK,
-                max_width = url_max_width,
-            },
-        }
-    else
-        url_widget = TextWidget:new{
-            text = url,
-            face = url_font,
-            fgcolor = Blitbuffer.COLOR_BLACK,
-            max_width = url_max_width,
-        }
-    end
-
-    -- Instructions text. On devices with physical keys we append a hint about
-    -- how to drive this screen without a touchscreen.
-    local instructions_text = _("Scan the QR code or enter the URL\nin your browser.\n\nBoth devices must be on the same WiFi network.")
-    if Device:hasDPad() then
-        instructions_text = instructions_text .. "\n\n"
-            .. _("Use the arrow keys to select a button and press the centre key to activate it. Press Back to leave this screen.")
-    elseif Device:hasKeys() then
-        instructions_text = instructions_text .. "\n\n" .. _("Press Back to leave this screen.")
-    end
-    local instructions_widget = TextBoxWidget:new{
-        text = instructions_text,
-        face = Font:getFace("smallinfofont", 20),
-        width = screen_width * 0.65,
-        alignment = "center",
-        fgcolor = Blitbuffer.COLOR_BLACK,
-    }
-
-    -- Stop Server button. Built as a real ButtonTable so it is tappable *and*
-    -- focusable/activatable with the D-pad; the FrameContainer around it only
-    -- restores the bordered look of the previous hand-rolled button.
-    local stop_button_table = ButtonTable:new{
-        width = Screen:scaleBySize(240),
-        buttons = {
-            {
-                {
-                    text = _("Stop Server"),
-                    font_face = "infofont",
-                    font_size = 20,
-                    callback = function()
-                        manager:stopFromQRScreen()
-                    end,
-                },
-            },
-        },
-        show_parent = widget,
-    }
-    local stop_button = FrameContainer:new{
-        bordersize = Size.border.button,
-        radius = Size.radius.button,
-        padding = Screen:scaleBySize(6),
-        background = Blitbuffer.COLOR_WHITE,
-        stop_button_table,
-    }
-
-    -- Vertical layout
-    local vertical_content = VerticalGroup:new{
-        align = "center",
-        VerticalSpan:new{ width = Screen:scaleBySize(40) },
-        title_widget,
-        VerticalSpan:new{ width = Screen:scaleBySize(30) },
-        qr_widget,
-        VerticalSpan:new{ width = Screen:scaleBySize(20) },
-        url_widget,
-        VerticalSpan:new{ width = Screen:scaleBySize(15) },
-        instructions_widget,
-        VerticalSpan:new{ width = Screen:scaleBySize(30) },
-        stop_button,
-    }
-
-    -- X (close) button in the top-right corner, also a real ButtonTable button
-    local close_button_table = ButtonTable:new{
-        width = Screen:scaleBySize(64),
-        buttons = {
-            {
-                {
-                    text = "\u{00D7}", -- multiplication sign as X
-                    font_face = "infofont",
-                    font_size = 32,
-                    callback = function()
-                        manager:confirmLeaveQRScreen()
-                    end,
-                },
-            },
-        },
-        show_parent = widget,
-    }
-    local close_button = FrameContainer:new{
-        bordersize = Size.border.button,
-        radius = Size.radius.button,
-        padding = Screen:scaleBySize(2),
-        background = Blitbuffer.COLOR_WHITE,
-        close_button_table,
-    }
-    local close_button_row = RightContainer:new{
-        dimen = { w = screen_width - Screen:scaleBySize(10), h = close_button:getSize().h + Screen:scaleBySize(10) },
-        FrameContainer:new{
-            bordersize = 0,
-            padding = 0,
-            padding_top = Screen:scaleBySize(10),
-            padding_right = Screen:scaleBySize(10),
-            background = Blitbuffer.COLOR_WHITE,
-            close_button,
-        },
-    }
-
-    -- Center everything on screen
-    local centered_content = CenterContainer:new{
-        dimen = { w = screen_width, h = screen_height },
-        vertical_content,
-    }
-
-    -- Layer the close button on top of centered content using OverlapGroup
-    local overlap = OverlapGroup:new{
-        dimen = { w = screen_width, h = screen_height },
-        centered_content,
-        close_button_row,
-    }
-
-    -- Full-screen white background container
-    local frame = FrameContainer:new{
-        width = screen_width,
-        height = screen_height,
-        bordersize = 0,
-        padding = 0,
-        margin = 0,
-        background = Blitbuffer.COLOR_WHITE,
-        overlap,
-    }
-
-    widget[1] = frame
-
-    -- Hand both ButtonTables' focus rows to the popup, side by side, so that
-    -- Left/Right moves between "Stop Server" and the close button. (These are
-    -- no-ops on devices without a D-pad, where ButtonTable has no layout.)
-    widget:mergeLayoutInHorizontal(stop_button_table)
-    widget:mergeLayoutInHorizontal(close_button_table)
-    if widget.layout[1] and widget.layout[1][1] then
-        -- Start with "Stop Server" focused (only visibly so on non-touch devices)
-        widget:refocusWidget()
-    end
-
-    -- FocusManager only steps vertically between rows of its layout, and our
-    -- two buttons live side by side in a single row, so Up/Down would move
-    -- nowhere. Map them onto the equivalent horizontal move, so the buttons can
-    -- be cycled with either axis (Left is not even available on few-keys
-    -- devices, where Up/Down is the only way across).
-    local focusMove = widget.onFocusMove
-    function widget:onFocusMove(args)
-        local dx, dy = unpack(args)
-        if dx == 0 and dy ~= 0 and #self.layout == 1 then
-            dx = dy > 0 and 1 or -1
-            if BD.mirroredUILayout() then
-                -- onFocusMove flips dx again in RTL; undo it here so that Down
-                -- always moves to the next button as laid out on screen.
-                dx = -dx
-            end
-            args = { dx, 0 }
-        end
-        return focusMove(self, args)
-    end
-
-    -- Key handling: on any device with keys, Back leaves the screen through the
-    -- same confirmation the close button shows. Focus movement and activation
-    -- (Up/Down/Left/Right, Press) are registered by FocusManager itself.
-    if Device:hasKeys() then
-        widget.key_events.Close = { { Device.input.group.Back } }
-    end
-
-    -- Touch handling: swallow taps that miss the buttons, so the popup is never
-    -- dismissed by an accidental tap (same as the previous behaviour).
-    if Device:isTouchDevice() then
-        widget.ges_events.TapSwallow = {
-            GestureRange:new{
-                ges = "tap",
-                range = Geom:new{ x = 0, y = 0, w = screen_width, h = screen_height },
-            },
-        }
-    end
-
-    --- Taps outside the buttons do nothing, but must not fall through.
-    function widget:onTapSwallow()
-        return true
-    end
-
-    --- Back key: leave the QR screen, warning that the server keeps running.
-    function widget:onClose()
-        manager:confirmLeaveQRScreen()
-        return true
-    end
-
-    self._qr_widget = widget
-    UIManager:show(widget, "full")
-end
-
 --- Only these protocols may reach the shell command below.
 local FIREWALL_PROTOCOLS = { tcp = true, udp = true }
 
 --- Add an iptables rule allowing incoming traffic on a port.
 --- @param port number
---- @param protocol string|nil: "tcp" (default, HTTP) or "udp" (mDNS)
-function FileSyncManager:openKindleFirewall(port, protocol)
-    -- Defensive: ensure port and protocol are safe before passing to a shell command
+function FileSyncManager:openKindleFirewall(port)
     port = tonumber(port)
-    protocol = protocol or "tcp"
-    if not port or not FIREWALL_PROTOCOLS[protocol] then return end
-    os.execute(string.format(
-        "iptables -A INPUT -p %s --dport %d -j ACCEPT 2>/dev/null",
-        protocol, port
-    ))
-    logger.info("FileSync: Kindle firewall rule added for", protocol, "port", port)
+    os.execute(string.format("iptables -A INPUT -p tcp --dport %d -j ACCEPT 2>/dev/null", port))
+    logger.info("FileSync: Kindle firewall rule added for tcp port", port)
 end
 
 --- Remove the iptables rule added by openKindleFirewall.
-function FileSyncManager:closeKindleFirewall(port, protocol)
-    -- Defensive: ensure port and protocol are safe before passing to a shell command
+--- @param port number
+function FileSyncManager:closeKindleFirewall(port)
     port = tonumber(port)
-    protocol = protocol or "tcp"
-    if not port or not FIREWALL_PROTOCOLS[protocol] then return end
-    os.execute(string.format(
-        "iptables -D INPUT -p %s --dport %d -j ACCEPT 2>/dev/null",
-        protocol, port
-    ))
-    logger.info("FileSync: Kindle firewall rule removed for", protocol, "port", port)
+    os.execute(string.format("iptables -D INPUT -p tcp --dport %d -j ACCEPT 2>/dev/null", port))
+    logger.info("FileSync: Kindle firewall rule removed for tcp port", port)
 end
 
 return FileSyncManager
